@@ -9,7 +9,7 @@ from pybo.models import Question
 # spring의 controller랑 같은 거 같은데?
 bp = Blueprint('main', __name__, url_prefix='/')
 
-
+# 기본 경로
 @bp.route('/')
 def index():
     return redirect(url_for('question._list')) # 질문 목록 페이지로 리다이렉트
