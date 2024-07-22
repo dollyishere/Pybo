@@ -1,5 +1,7 @@
 from pybo import db
 
+# 모델(db ORM 관련)용 파일
+
 # 질문 모델 클래스
 # db.Model 클래스를 상속받음
 # 해당 db 객체는 __init__.py 파일에서 생성한 SQLAlchemy 클래스의 객체임
@@ -11,7 +13,13 @@ class Question(db.Model):
     subject = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text(), nullable=False)
     create_date = db.Column(db.DateTime(), nullable=False)
+    # 질문 작성한 회원 정보 추가
+    # 기존에 작성한 회원 없는 경우 오류 발생할 수 있으니 default 값 지정(그냥 nullable true로 하면 user_id가 pk라서 에러 뜸)
+    # user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=True, server_default='1')
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    user = db.relationship('User', backref=db.backref('question_set'))
 
+# 답변 모델
 class Answer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # 질문 모델 상속받음(fk), 질문 삭제 시 해당 질문에 달린 답변도 함께 삭제(CASCADE)
@@ -22,3 +30,13 @@ class Answer(db.Model):
     question = db.relationship('Question', backref=db.backref('answer_set', cascade='all, delete-orphan'))
     content = db.Column(db.Text(), nullable=False)
     create_date = db.Column(db.DateTime(), nullable=False)
+    # user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=True, server_default='1')
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    user = db.relationship('User', backref=db.backref('answer_set'))
+
+# 회원 모델
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
