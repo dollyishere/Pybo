@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, request, url_for, g, flash
 from werkzeug.utils import redirect
 
 from .. import db
-from pybo.models import Question
+from pybo.models import Question, Answer, User
 from pybo.forms import QuestionForm, AnswerForm
 from .auth_views import login_required
 
@@ -18,11 +18,33 @@ def _list():
     # page 파라미터는 정수라는 것을 명시
     # url에 page 값이 없으면 default = 1이 적용됨
     page = request.args.get('page', type=int, default=1) # 페이지
+    kw = request.args.get('kw', type=str, default='') # 검색 키워드
     question_list = Question.query.order_by(Question.create_date.desc())
+    # 키워드가 존재할 시(''가 아닐 시)
+    if kw:
+        # 키워드 앞 뒤에 어떤 내용이 들어가든 검색 가능
+        search = '%%{}%%'.format(kw) 
+        # 답변 검색 용 서브쿼리
+        sub_query = db.session.query(Answer.question_id, Answer.content, User.username) \
+            .join(User, Answer.user_id == User.id).subquery()
+        # 조건에 해당하는 질문 쿼리 받아오기
+        # 질문, 답변, 각각의 작성자 전부 검색
+        # TODO: 나중에 카테고리 별로 나눠서 검색하기 기능 만들어도 좋을 듯
+        # TODO: 질문하고 검색 눌렀을 시 질문 키워드만 하이라이트 기능?
+        question_list = question_list \
+            .join(User) \
+            .outerjoin(sub_query, sub_query.c.question_id == Question.id) \
+            .filter(Question.subject.ilike(search) |  # 질문제목
+                    Question.content.ilike(search) |  # 질문내용
+                    User.username.ilike(search) |  # 질문작성자
+                    sub_query.c.content.ilike(search) |  # 답변내용
+                    sub_query.c.username.ilike(search)  # 답변작성자
+                    ) \
+            .distinct() # 중복 제거
     # pagenite 메서드는 키워드로만 인자를 보낼 수 있음
     # page는 현재 조회할 페이지의 번호이고, per_page는 페이지마다 보여 줄 게시물이 10건이라는 의미임
     question_list = question_list.paginate(page=page, per_page=10)
-    return render_template('question/question_list.html', question_list=question_list)
+    return render_template('question/question_list.html', question_list=question_list, page=page, kw=kw)
 
 # 질문 상세
 @bp.route('/detail/<int:question_id>/') # 숫자가 매핑되는 것을 알려줌(int)
@@ -72,6 +94,7 @@ def modify(question_id):
 @login_required
 def delete(question_id):
     question = Question.query.get_or_404(question_id)
+    # 작성자 아닐 시 삭제 불가
     if g.user != question.user:
         flash('삭제권한이 없습니다')
         return redirect(url_for('question.detail', question_id=question_id))
