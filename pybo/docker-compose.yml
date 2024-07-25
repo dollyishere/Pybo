@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+    web:
+        build:
+            context: .
+        env_file:
+            - .env
+        ports:
+            - 5000:5000
+        environment:
+            - FLASK_APP=./src/__init__.py
+        volumes:
+            - ./:/app
+    postgres:
+        container_name: postgres
+        image: postgres:latest
+        ports:
+            - 5432:5432
+        environment:
+            - POSTGRES_DB=${PG_DB}
+            - POSTGRES_USER=${PG_USER}
+            - POSTGRES_PASSWORD=${PG_PASSWORD}
+        volumes:
+            - postgres:/var/lib/postgres
+    pgadmin:
+        container_name: pgadmin
+        image: dpage/pgadmin4
+        ports:
+            - 8088:80
+        environment:
+            - PGADMIN_DEFAULT_EMAIL=${PG_ADMIN_EMAIL}
+            - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+
+volumes:
+    postgres:

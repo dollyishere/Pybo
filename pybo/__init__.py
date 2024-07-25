@@ -3,7 +3,8 @@ from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData
 # from flaskext.markdown import Markdown
-
+import os
+from dotenv import load_dotenv
 import config
 
 # 객체 바깥에 생성
@@ -14,6 +15,7 @@ naming_convention = {
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
     "pk": "pk_%(table_name)s"
 }
+load_dotenv()
 db = SQLAlchemy(metadata=MetaData(naming_convention=naming_convention))
 migrate = Migrate()
 
@@ -21,8 +23,16 @@ migrate = Migrate()
 def create_app():
     app = Flask(__name__)
     # config 파일 작성 항목 읽기
+    # config_mode = os.getenv("CONFIG_MODE")
+    # app.config.from_object(config[config_mode])
+    # # app.config.from_pyfile('config.py')
+
+    config_mode = os.getenv("CONFIG_MODE", "development")
     app.config.from_object(config)
-    # app.config.from_pyfile('config.py')
+    
+    # 데이터베이스 URI 설정 확인
+    if 'SQLALCHEMY_DATABASE_URI' not in app.config:
+        raise RuntimeError('SQLALCHEMY_DATABASE_URI is not set in the config.')
 
     # ORM
     db.init_app(app) # db 객체 생성
